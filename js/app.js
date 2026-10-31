@@ -6,16 +6,16 @@
   const pagesEl = $('#pages');
 
   if (typeof pdfjsLib === 'undefined' || typeof PDFLib === 'undefined') {
-    $('#empty').innerHTML = '<h1>Libraries failed to load</h1><p>PDF.js and pdf-lib are loaded from cdnjs.cloudflare.com. Check your internet connection and reload.</p>';
+    $('#empty').innerHTML = '<h1>Libraries failed to load</h1><p>The files in js/vendor/ are missing. Re-download pdf.min.js, pdf.worker.min.js and pdf-lib.min.js into that folder.</p>';
     return;
   }
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'js/vendor/pdf.worker.min.js';
 
   // ---------- settings ----------
   const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } };
   const DEFAULT_FILTERS = { brightness: 100, contrast: 100, saturate: 100, grayscale: 0, sepia: 0, hue: 0 };
   const settings = Object.assign({
-    mode: 'original', bg: '#121212', fg: '#e6e6e6', scale: 1.25,
+    ui: 'paper', mode: 'original', bg: '#121212', fg: '#e6e6e6', scale: 1.25,
     readerSize: 20, readerFont: 'serif', panel: true,
   }, readJSON('pdfv:settings'));
   settings.filters = Object.assign({}, DEFAULT_FILTERS, settings.filters);
@@ -159,7 +159,7 @@
     state.name = name;
     $('#fileName').textContent = name;
     $('#fileName').title = name;
-    document.title = name + ' – PDF Viewer';
+    document.title = name + ' – Besty-PDF';
     $('#empty').hidden = true;
     state.readerBuilt = false;
     if (state.readerOn) toggleReader(false);
@@ -391,6 +391,8 @@
   function setTool(t) {
     Annot.setTool(t);
     viewer.dataset.tool = t;
+    $('#stage').dataset.tool = t;
+    $('#stylebar').hidden = t === 'none' || t === 'eraser';
     document.querySelectorAll('.tool').forEach((b) => b.classList.toggle('active', b.dataset.tool === t));
     if (t === 'highlight') { $('#annOpacity').value = 40; syncStyle(); }
     else if (t !== 'none' && t !== 'eraser' && +$('#annOpacity').value < 100) { $('#annOpacity').value = 100; syncStyle(); }
@@ -407,6 +409,21 @@
     });
   }
   ['#annColor', '#annWidth', '#annOpacity', '#annSize'].forEach((s) => $(s).addEventListener('input', syncStyle));
+
+  const swatches = document.querySelectorAll('#swatches button');
+  const markSwatch = () => swatches.forEach((b) => b.classList.toggle('active', b.dataset.color === $('#annColor').value.toLowerCase()));
+  swatches.forEach((b) => b.addEventListener('click', () => { $('#annColor').value = b.dataset.color; syncStyle(); markSwatch(); }));
+  $('#annColor').addEventListener('input', markSwatch);
+  markSwatch();
+
+  // ---------- interface theme ----------
+  function applyUi() {
+    document.documentElement.dataset.ui = settings.ui;
+    document.querySelectorAll('#uiSwatches button').forEach((b) => b.classList.toggle('active', b.dataset.ui === settings.ui));
+    saveSettings();
+  }
+  document.querySelectorAll('#uiSwatches button').forEach((b) => b.addEventListener('click', () => { settings.ui = b.dataset.ui; applyUi(); }));
+  applyUi();
 
   Annot.onChange = () => {
     $('#undo').disabled = !Annot.canUndo;
@@ -570,6 +587,27 @@
     const f = e.dataTransfer && e.dataTransfer.files[0];
     if (f && /pdf$/i.test(f.type || f.name)) openFile(f); else if (f) toast('That is not a PDF file');
   });
+
+  // ---------- install / offline ----------
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; $('#btnInstall').hidden = false; });
+  window.addEventListener('appinstalled', () => { installEvt = null; $('#btnInstall').hidden = true; toast('Installed — it now works offline'); });
+  $('#btnInstall').addEventListener('click', async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    await installEvt.userChoice;
+    installEvt = null;
+    $('#btnInstall').hidden = true;
+  });
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Offline cache unavailable:', e));
+  }
+  // open a PDF launched through the OS ("Open with Besty-PDF")
+  if ('launchQueue' in window) {
+    window.launchQueue.setConsumer(async (params) => {
+      if (params.files && params.files.length) openFile(await params.files[0].getFile());
+    });
+  }
 
   // ---------- init ----------
   applyChrome();

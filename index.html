@@ -1,88 +1,152 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-ui="paper">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PDF Viewer</title>
+<title>Besty-PDF</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#b4472a">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/style.css">
+<script>
+  // apply the saved interface theme before first paint
+  try { var s = JSON.parse(localStorage.getItem('pdfv:settings')); if (s && s.ui) document.documentElement.dataset.ui = s.ui; } catch (e) {}
+</script>
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z"/></symbol>
+    <symbol id="i-highlight" viewBox="0 0 24 24"><path d="M15 4l5 5-9 9H6v-5z"/><path d="M4 21h8"/></symbol>
+    <symbol id="i-underline" viewBox="0 0 24 24"><path d="M6 4v7a6 6 0 0012 0V4"/><path d="M4 21h16"/></symbol>
+    <symbol id="i-line" viewBox="0 0 24 24"><path d="M6 18L18 6"/><circle cx="5" cy="19" r="1.6"/><circle cx="19" cy="5" r="1.6"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></symbol>
+    <symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1.5"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V5h14v2M12 5v14M9 19h6"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M4 15l9-9a2 2 0 013 0l4 4a2 2 0 010 3l-7 7H8z"/><path d="M9 10l5 5M8 20h12"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 000 12h3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5h6a2 2 0 012 2v12a2 2 0 00-2-2H4zM20 5h-6a2 2 0 00-2 2v12a2 2 0 012-2h6z"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  </defs>
+</svg>
+
 <header class="bar">
-  <div class="grp">
-    <button id="btnOpen" class="btn primary">Open PDF</button>
-    <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden>
-    <span id="fileName" class="muted ellipsis">No file</span>
-  </div>
+  <div class="brand"><span class="mark"></span>Besty-PDF</div>
 
   <div class="grp">
-    <button id="prevPage" class="btn" title="Previous page">‹</button>
+    <button id="btnOpen" class="btn" title="Open a PDF"><svg class="ic"><use href="#i-open"/></svg><span class="lbl">Open</span></button>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden>
+  </div>
+
+  <div class="doc">
+    <span id="fileName" class="ellipsis">No file open</span>
+    <span id="annCount" class="chip">0 marks</span>
+  </div>
+
+  <div class="grp pager">
+    <button id="prevPage" class="btn icon" title="Previous page"><svg class="ic"><use href="#i-left"/></svg></button>
     <input id="pageNum" type="number" min="1" value="1" aria-label="Page number">
     <span id="pageCount" class="muted">/ 0</span>
-    <button id="nextPage" class="btn" title="Next page">›</button>
+    <button id="nextPage" class="btn icon" title="Next page"><svg class="ic"><use href="#i-right"/></svg></button>
   </div>
 
   <div class="grp">
-    <button id="zoomOut" class="btn" title="Zoom out (Ctrl + wheel)">−</button>
+    <button id="zoomOut" class="btn icon" title="Zoom out (Ctrl + wheel)"><svg class="ic"><use href="#i-minus"/></svg></button>
     <span id="zoomLabel" class="zoomlabel">125%</span>
-    <button id="zoomIn" class="btn" title="Zoom in">+</button>
-    <button id="zoomFit" class="btn" title="Fit width">Fit</button>
+    <button id="zoomIn" class="btn icon" title="Zoom in"><svg class="ic"><use href="#i-plus"/></svg></button>
+    <button id="zoomFit" class="btn icon" title="Fit width"><svg class="ic"><use href="#i-fit"/></svg></button>
   </div>
 
   <div class="grp right">
-    <button id="btnReader" class="btn" title="Reflowed text view with adjustable text size">Reader</button>
-    <button id="btnSave" class="btn primary" title="Save PDF with annotations (Ctrl+S)">Save PDF</button>
-    <button id="btnPanel" class="btn" title="Toggle settings panel">⚙</button>
-    <button id="btnHideTop" class="btn" title="Hide top bars">▲</button>
+    <button id="btnReader" class="btn" title="Reflowed text with adjustable size"><svg class="ic"><use href="#i-book"/></svg><span class="lbl">Reader</span></button>
+    <button id="btnSave" class="btn primary" title="Save PDF with your edits (Ctrl+S)"><svg class="ic"><use href="#i-save"/></svg><span class="lbl">Save</span></button>
+    <button id="btnInstall" class="btn" title="Install as an app (works offline)" hidden><svg class="ic"><use href="#i-save"/></svg><span class="lbl">Install</span></button>
+    <button id="btnPanel" class="btn icon" title="Appearance panel"><svg class="ic"><use href="#i-sliders"/></svg></button>
+    <button id="btnHideTop" class="btn icon" title="Hide toolbars"><svg class="ic"><use href="#i-up"/></svg></button>
   </div>
 </header>
 
-<div class="tools" id="tools">
-  <div class="grp">
-    <button class="btn tool active" data-tool="none" title="Browse / scroll">Browse</button>
-    <button class="btn tool" data-tool="highlight" title="Highlight an area">Highlight</button>
-    <button class="btn tool" data-tool="underline" title="Straight horizontal mark line">Mark line</button>
-    <button class="btn tool" data-tool="line" title="Line at any angle">Line</button>
-    <button class="btn tool" data-tool="pen" title="Freehand pen">Pen</button>
-    <button class="btn tool" data-tool="rect" title="Rectangle outline">Box</button>
-    <button class="btn tool" data-tool="text" title="Add or edit text (click)">Text</button>
-    <button class="btn tool" data-tool="eraser" title="Click an annotation to delete it">Eraser</button>
-  </div>
-  <div class="grp">
-    <label class="inl">Color <input type="color" id="annColor" value="#ffe600"></label>
-    <label class="inl">Width <input type="range" id="annWidth" min="1" max="24" value="3"></label>
-    <label class="inl">Opacity <input type="range" id="annOpacity" min="10" max="100" value="40"></label>
-    <label class="inl">Note size <input type="number" id="annSize" min="6" max="96" value="16"></label>
-  </div>
-  <div class="grp">
-    <button id="undo" class="btn" disabled title="Undo (Ctrl+Z)">Undo</button>
-    <button id="redo" class="btn" disabled title="Redo (Ctrl+Y)">Redo</button>
-    <button id="clearAll" class="btn" disabled>Clear all</button>
-    <span id="annCount" class="muted">0 marks</span>
-  </div>
-</div>
-
 <main class="layout">
-  <div id="viewer" class="viewer" data-tool="none">
-    <div id="pages"></div>
-    <div id="empty" class="empty">
-      <h1>PDF Viewer</h1>
-      <p>Drop a PDF here or</p>
-      <p>
-        <button id="emptyOpen" class="btn primary">Open PDF</button>
-        <button id="btnSample" class="btn">Load sample</button>
-      </p>
-    </div>
-  </div>
+  <nav class="tools rail" id="tools" aria-label="Annotation tools">
+    <button class="btn icon tool active" data-tool="none" title="Browse"><svg class="ic"><use href="#i-cursor"/></svg></button>
+    <span class="sep"></span>
+    <button class="btn icon tool" data-tool="highlight" title="Highlight"><svg class="ic"><use href="#i-highlight"/></svg></button>
+    <button class="btn icon tool" data-tool="underline" title="Mark line (straight, horizontal)"><svg class="ic"><use href="#i-underline"/></svg></button>
+    <button class="btn icon tool" data-tool="line" title="Line"><svg class="ic"><use href="#i-line"/></svg></button>
+    <button class="btn icon tool" data-tool="pen" title="Pen"><svg class="ic"><use href="#i-pen"/></svg></button>
+    <button class="btn icon tool" data-tool="rect" title="Box"><svg class="ic"><use href="#i-rect"/></svg></button>
+    <button class="btn icon tool" data-tool="text" title="Text note (click a page; click a note to edit)"><svg class="ic"><use href="#i-text"/></svg></button>
+    <button class="btn icon tool" data-tool="eraser" title="Eraser (click a mark)"><svg class="ic"><use href="#i-eraser"/></svg></button>
+    <span class="sep"></span>
+    <button id="undo" class="btn icon" disabled title="Undo (Ctrl+Z)"><svg class="ic"><use href="#i-undo"/></svg></button>
+    <button id="redo" class="btn icon" disabled title="Redo (Ctrl+Y)"><svg class="ic"><use href="#i-redo"/></svg></button>
+    <button id="clearAll" class="btn icon" disabled title="Remove all marks"><svg class="ic"><use href="#i-trash"/></svg></button>
+  </nav>
 
-  <section id="reader" hidden>
-    <article id="readerBody"></article>
-  </section>
+  <div class="stage" id="stage" data-tool="none">
+    <div id="stylebar" class="stylebar" hidden>
+      <div class="swatches" id="swatches">
+        <button data-color="#ffe14d" style="--c:#ffe14d" title="Yellow"></button>
+        <button data-color="#7ee787" style="--c:#7ee787" title="Green"></button>
+        <button data-color="#6cc4ff" style="--c:#6cc4ff" title="Blue"></button>
+        <button data-color="#ff8fb1" style="--c:#ff8fb1" title="Pink"></button>
+        <button data-color="#ff6b4a" style="--c:#ff6b4a" title="Red"></button>
+        <button data-color="#222222" style="--c:#222222" title="Black"></button>
+        <input type="color" id="annColor" value="#ffe14d" title="Custom color">
+      </div>
+      <label class="f f-width">Width <input type="range" id="annWidth" min="1" max="24" value="3"></label>
+      <label class="f f-opacity">Opacity <input type="range" id="annOpacity" min="10" max="100" value="40"></label>
+      <label class="f f-size">Size <input type="number" id="annSize" min="6" max="96" value="16"></label>
+    </div>
+
+    <div id="viewer" class="viewer" data-tool="none">
+      <div id="pages"></div>
+      <div id="empty" class="empty">
+        <div class="big">Besty-PDF</div>
+        <p>Read, mark up and re-color your PDFs.<br>Drop a file anywhere to begin.</p>
+        <p>
+          <button id="emptyOpen" class="btn primary">Open a PDF</button>
+          <button id="btnSample" class="btn">Try the sample</button>
+        </p>
+      </div>
+    </div>
+
+    <section id="reader" hidden>
+      <article id="readerBody"></article>
+    </section>
+  </div>
 
   <aside id="panel">
-    <div class="panelhead"><strong>Settings</strong><button id="btnClosePanel" class="btn small" title="Close panel">✕</button></div>
-    <details open>
-      <summary>Colors &amp; dark mode</summary>
+    <div class="panelhead"><strong>Appearance</strong><button id="btnClosePanel" class="btn icon small" title="Close panel"><svg class="ic"><use href="#i-close"/></svg></button></div>
+
+    <section>
+      <h4>Interface theme</h4>
+      <div class="uisw" id="uiSwatches">
+        <button data-ui="paper" title="Paper"><i></i><span>Paper</span></button>
+        <button data-ui="graphite" title="Graphite"><i></i><span>Graphite</span></button>
+        <button data-ui="nord" title="Nord"><i></i><span>Nord</span></button>
+        <button data-ui="forest" title="Forest"><i></i><span>Forest</span></button>
+        <button data-ui="dusk" title="Dusk"><i></i><span>Dusk</span></button>
+        <button data-ui="mono" title="Mono"><i></i><span>Mono</span></button>
+      </div>
+    </section>
+
+    <section>
+      <h4>Page colors <small>dark mode</small></h4>
       <div class="seg" id="themeSeg">
         <button data-mode="original">Original</button>
         <button data-mode="dark">Dark</button>
@@ -93,11 +157,11 @@
       </div>
       <label class="row">Background <input type="color" id="bgColor" value="#121212"></label>
       <label class="row">Text <input type="color" id="fgColor" value="#e6e6e6"></label>
-      <p class="hint">Text and vector colors are re-mapped while the page is drawn, so images keep their original colors. Scanned PDFs (a page that is one big image) can't be recolored.</p>
-    </details>
+      <p class="hint">Text and vector colors are re-mapped as the page is drawn, so images keep their original colors. Scanned PDFs (one big image per page) can't be recolored.</p>
+    </section>
 
-    <details open>
-      <summary>Text size</summary>
+    <section>
+      <h4>Text size</h4>
       <label class="row">Page zoom <input type="range" id="zoomRange" min="25" max="500" step="5" value="125"></label>
       <label class="row">Reader text <input type="range" id="readerSize" min="12" max="48" value="20"></label>
       <label class="row">Reader font
@@ -107,11 +171,11 @@
           <option value="mono">Mono</option>
         </select>
       </label>
-      <p class="hint">A PDF has a fixed layout, so “Page zoom” scales the whole page. Use <b>Reader</b> to resize only the text.</p>
-    </details>
+      <p class="hint">PDFs have a fixed layout, so zoom scales the whole page. <b>Reader</b> reflows the text so only the text changes size.</p>
+    </section>
 
-    <details open>
-      <summary>Filters</summary>
+    <section>
+      <h4>Filters</h4>
       <label class="row">Preset
         <select id="filterPreset">
           <option value="none">None</option>
@@ -124,17 +188,16 @@
       </label>
       <div id="filterRows"></div>
       <button id="filterReset" class="btn small">Reset filters</button>
-      <p class="hint">Filters are for viewing only; they are not written into the saved PDF.</p>
-    </details>
+    </section>
   </aside>
 </main>
 
-<button id="showTop" class="btn float top" title="Show top bars" hidden>▼</button>
-<button id="showPanel" class="btn float side" title="Show settings panel" hidden>⚙</button>
+<button id="showTop" class="btn float top" title="Show toolbars" hidden><svg class="ic"><use href="#i-down"/></svg></button>
+<button id="showPanel" class="btn float side" title="Show appearance panel" hidden><svg class="ic"><use href="#i-sliders"/></svg></button>
 <div id="toast" class="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="js/vendor/pdf.min.js"></script>
+<script src="js/vendor/pdf-lib.min.js"></script>
 <script src="js/recolor.js"></script>
 <script src="js/annotations.js"></script>
 <script src="js/export.js"></script>
