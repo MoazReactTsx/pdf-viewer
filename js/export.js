@@ -28,9 +28,23 @@ const Exporter = (() => {
     page.drawImage(png, { x: X(a.x), y: Y(a.y) - c.height / sc, width: c.width / sc, height: c.height / sc });
   }
 
-  async function build(bytes, items) {
+  /*
+   * baked (optional): [{ w, h, dataUrl }] per page - pages already rendered with
+   * the viewer's colors/filters. They replace the original pages.
+   */
+  async function build(bytes, items, baked) {
     const { PDFDocument, StandardFonts, LineCapStyle } = PDFLib;
-    const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    let doc;
+    if (baked) {
+      doc = await PDFDocument.create();
+      for (const b of baked) {
+        const page = doc.addPage([b.w, b.h]);
+        const img = await doc.embedJpg(b.dataUrl);
+        page.drawImage(img, { x: 0, y: 0, width: b.w, height: b.h });
+      }
+    } else {
+      doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    }
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const pages = doc.getPages();
     let skipped = 0;

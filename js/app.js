@@ -420,11 +420,56 @@
   $('#clearAll').addEventListener('click', () => { if (confirm('Remove all marks from this document?')) Annot.clearAll(); });
 
   // ---------- saving ----------
+  const filterCss = () => {
+    const f = settings.filters;
+    return `brightness(${f.brightness}%) contrast(${f.contrast}%) saturate(${f.saturate}%) grayscale(${f.grayscale}%) sepia(${f.sepia}%) hue-rotate(${f.hue}deg)`;
+  };
+  const filtersChanged = () => Object.keys(DEFAULT_FILTERS).some((k) => settings.filters[k] !== DEFAULT_FILTERS[k]);
+
+  // Renders every page with the current colors/filters (images keep their colors).
+  async function bakePages() {
+    const out = [];
+    for (let n = 1; n <= state.pdf.numPages; n++) {
+      toast(`Applying appearance… page ${n}/${state.pdf.numPages}`, 60000);
+      const page = await state.pdf.getPage(n);
+      const v1 = page.getViewport({ scale: 1 });
+      const s = Math.min(2, Math.sqrt(12e6 / (v1.width * v1.height)));
+      const vp = page.getViewport({ scale: s });
+      const cv = document.createElement('canvas');
+      cv.width = Math.floor(vp.width);
+      cv.height = Math.floor(vp.height);
+      const ctx = cv.getContext('2d');
+      if (Recolor.enabled) { Recolor.install(ctx); cv.style.background = Recolor.bg; }
+      await page.render({ canvasContext: ctx, viewport: vp, background: '#ffffff' }).promise;
+
+      let final = cv;
+      if (Recolor.enabled || filtersChanged()) {
+        final = document.createElement('canvas');
+        final.width = cv.width;
+        final.height = cv.height;
+        const f = final.getContext('2d');
+        f.fillStyle = Recolor.enabled ? Recolor.bg : '#ffffff';
+        f.fillRect(0, 0, final.width, final.height);
+        if (filtersChanged()) f.filter = filterCss();
+        f.drawImage(cv, 0, 0);
+      }
+      out.push({ w: v1.width, h: v1.height, dataUrl: final.toDataURL('image/jpeg', 0.92) });
+    }
+    return out;
+  }
+
   async function save() {
     if (!state.bytes) { toast('Open a PDF first'); return; }
+    let baked = null;
+    if (Recolor.enabled || filtersChanged()) {
+      const ok = confirm('Your dark mode / colors / filters will be saved into the PDF.\n\nThis turns each page into an image (text will no longer be selectable).\n\nOK = save with appearance\nCancel = save original pages with marks only');
+      if (ok) {
+        try { baked = await bakePages(); } catch (e) { console.error(e); toast('Could not apply appearance: ' + e.message, 5000); return; }
+      }
+    }
     toast('Saving…', 8000);
     try {
-      const { bytes, skipped } = await Exporter.build(state.bytes, Annot.items);
+      const { bytes, skipped } = await Exporter.build(state.bytes, Annot.items, baked);
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -497,11 +542,19 @@
     setScale(state.scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
   }, { passive: false });
 
-  $('#btnPanel').addEventListener('click', () => {
-    settings.panel = !settings.panel;
+  function applyChrome() {
     $('#panel').classList.toggle('closed', !settings.panel);
+    document.body.classList.toggle('hide-top', !!settings.hideTop);
+    $('#showTop').hidden = !settings.hideTop;
+    $('#showPanel').hidden = settings.panel || !settings.hideTop;
     saveSettings();
-  });
+  }
+  const setPanel = (open) => { settings.panel = open; applyChrome(); };
+  $('#btnPanel').addEventListener('click', () => setPanel(!settings.panel));
+  $('#btnClosePanel').addEventListener('click', () => setPanel(false));
+  $('#showPanel').addEventListener('click', () => setPanel(true));
+  $('#btnHideTop').addEventListener('click', () => { settings.hideTop = true; applyChrome(); });
+  $('#showTop').addEventListener('click', () => { settings.hideTop = false; applyChrome(); });
 
   document.addEventListener('keydown', (e) => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
@@ -519,7 +572,7 @@
   });
 
   // ---------- init ----------
-  $('#panel').classList.toggle('closed', !settings.panel);
+  applyChrome();
   applyColors(false);
   applyFilters();
   applyReaderStyle();

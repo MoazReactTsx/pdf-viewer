@@ -33,6 +33,7 @@
     <button id="btnReader" class="btn" title="Reflowed text view with adjustable text size">Reader</button>
     <button id="btnSave" class="btn primary" title="Save PDF with annotations (Ctrl+S)">Save PDF</button>
     <button id="btnPanel" class="btn" title="Toggle settings panel">⚙</button>
+    <button id="btnHideTop" class="btn" title="Hide top bars">▲</button>
   </div>
 </header>
 
@@ -79,6 +80,7 @@
   </section>
 
   <aside id="panel">
+    <div class="panelhead"><strong>Settings</strong><button id="btnClosePanel" class="btn small" title="Close panel">✕</button></div>
     <details open>
       <summary>Colors &amp; dark mode</summary>
       <div class="seg" id="themeSeg">
@@ -127,6 +129,8 @@
   </aside>
 </main>
 
+<button id="showTop" class="btn float top" title="Show top bars" hidden>▼</button>
+<button id="showPanel" class="btn float side" title="Show settings panel" hidden>⚙</button>
 <div id="toast" class="toast" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
