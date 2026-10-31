@@ -1,7 +1,7 @@
 'use strict';
 
 // Bump CACHE when any file below changes so installed copies update.
-const CACHE = 'besty-pdf-v1';
+const CACHE = 'besty-pdf-v2';
 const FILES = [
   './',
   './index.html',

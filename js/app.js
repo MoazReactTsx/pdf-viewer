@@ -426,14 +426,14 @@
   applyUi();
 
   Annot.onChange = () => {
-    $('#undo').disabled = !Annot.canUndo;
-    $('#redo').disabled = !Annot.canRedo;
+    $('#undo').disabled = $('#undo2').disabled = !Annot.canUndo;
+    $('#redo').disabled = $('#redo2').disabled = !Annot.canRedo;
     const n = Annot.items.length;
     $('#clearAll').disabled = n === 0;
     $('#annCount').textContent = n + (n === 1 ? ' mark' : ' marks');
   };
-  $('#undo').addEventListener('click', () => Annot.undo());
-  $('#redo').addEventListener('click', () => Annot.redo());
+  ['#undo', '#undo2'].forEach((s) => $(s).addEventListener('click', () => Annot.undo()));
+  ['#redo', '#redo2'].forEach((s) => $(s).addEventListener('click', () => Annot.redo()));
   $('#clearAll').addEventListener('click', () => { if (confirm('Remove all marks from this document?')) Annot.clearAll(); });
 
   // ---------- saving ----------
@@ -574,7 +574,9 @@
   $('#showTop').addEventListener('click', () => { settings.hideTop = false; applyChrome(); });
 
   document.addEventListener('keydown', (e) => {
-    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName);
+    // only real text entry keeps its own undo; sliders, colors and buttons don't
+    const t = e.target;
+    const typing = t.tagName === 'TEXTAREA' || (t.tagName === 'INPUT' && /^(text|number|search)$/.test(t.type));
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); save(); }
     else if (mod && !typing && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? Annot.redo() : Annot.undo(); }
